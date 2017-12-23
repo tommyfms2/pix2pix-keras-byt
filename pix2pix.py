@@ -106,17 +106,17 @@ def my_train(args):
     img_shape = rawImage.shape[-3:]
     print('img_shape : ', img_shape)
     patch_num = (img_shape[0] // args.patch_size) * (img_shape[1] // args.patch_size)
-    img_shape_disc = (args.patch_size, args.patch_size, procImage.shape[-1])
-    print('img_shape_disc : ', img_shape_disc)
+    disc_img_shape = (args.patch_size, args.patch_size, procImage.shape[-1])
+    print('disc_img_shape : ', disc_img_shape)
 
     # train
     opt_dcgan = Adam(lr=1E-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
     opt_discriminator = Adam(lr=1E-3, beta_1=0.9, beta_2=0.999, epsilon=1e-08)
 
     # load generator model
-    generator_model = models.my_load_generator(img_shape, img_shape_disc)
+    generator_model = models.my_load_generator(img_shape, disc_img_shape)
     # load discriminator model
-    discriminator_model = models.my_load_DCGAN_discriminator(img_shape_disc, patch_num)
+    discriminator_model = models.my_load_DCGAN_discriminator(img_shape, disc_img_shape, patch_num)
 
     generator_model.compile(loss='mae', optimizer=opt_discriminator)
     discriminator_model.trainable = False
@@ -129,9 +129,6 @@ def my_train(args):
 
     discriminator_model.trainable = True
     discriminator_model.compile(loss='binary_crossentropy', optimizer=opt_discriminator)
-
-    gen_loss = 100
-    disc_loss = 100
 
     # start training
     print('start training')
@@ -148,9 +145,10 @@ def my_train(args):
         for (X_proc_batch, X_raw_batch) in zip(X_procImageIter, X_rawImageIter):
             b_it += 1
             X_disc, y_disc = get_disc_batch(X_proc_batch, X_raw_batch, generator_model, b_it, args.patch_size)
-
+            raw_disc, _ = get_disc_batch(X_raw_batch, X_raw_batch, generator_model, 1, args.patch_size)
+            x_disc = X_disc + raw_disc
             # update the discriminator
-            disc_loss = discriminator_model.train_on_batch(X_disc, y_disc)
+            disc_loss = discriminator_model.train_on_batch(x_disc, y_disc)
 
             # create a batch to feed the generator model
             idx = np.random.choice(procImage.shape[0], args.batch_size)
@@ -158,7 +156,7 @@ def my_train(args):
             y_gen = np.zeros((X_gen.shape[0], 2), dtype=np.uint8)
             y_gen[:, 1] = 1
 
-            # Freeze the discriminator = dis
+            # Freeze the discriminator
             # discriminator_model.trainable = False
             gen_loss = DCGAN_model.train_on_batch(X_gen, [X_gen_target, y_gen])
             # Unfreeze the discriminator
@@ -180,7 +178,6 @@ def my_train(args):
 
         print("")
         print('Epoch %s/%s, Time: %s' % (e + 1, args.epoch, time.time() - starttime))
-
 
 
 

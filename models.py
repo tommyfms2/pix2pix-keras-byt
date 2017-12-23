@@ -26,7 +26,7 @@ def up_conv_block_unet(x, x2, f, name, bn_axis, bn=True, dropout=False):
     return x
 
 
-def generator_unet_upsampling(img_shape, img_shape_disc, model_name="generator_unet_upsampling"):
+def generator_unet_upsampling(img_shape, disc_img_shape, model_name="generator_unet_upsampling"):
     filters_num = 64
     axis_num = -1
     channels_num = img_shape[-1]
@@ -65,31 +65,39 @@ def generator_unet_upsampling(img_shape, img_shape_disc, model_name="generator_u
 
     x = Activation('relu')(list_decoder[-1])
     x = UpSampling2D(size=(2, 2))(x)
-    x = Conv2D(img_shape_disc[-1], (3,3), name="last_conv", padding='same')(x)
+    x = Conv2D(disc_img_shape[-1], (3,3), name="last_conv", padding='same')(x)
     x = Activation('tanh')(x)
 
     generator_unet = Model(input=[unet_input], outputs=[x])
     return generator_unet
 
 
-def DCGAN_discriminator(img_shape, patch_num, model_name='DCGAN_discriminator'):
-    list_input = [Input(shape=img_shape, name='disc_input_'+str(i)) for i in range(patch_num)]
-    print(list_input)
+def DCGAN_discriminator(img_shape, disc_img_shape, patch_num, model_name='DCGAN_discriminator'):
+    disc_raw_img_shape = (disc_img_shape[0], disc_img_shape[1], img_shape[-1])
+    list_input = [Input(shape=disc_img_shape, name='disc_input_'+str(i)) for i in range(patch_num)]
+    list_raw_input = [Input(shape=disc_raw_img_shape, name='disc_raw_input_'+str(i)) for i in range(patch_num)]
+
     axis_num = -1
     filters_num = 64
-    conv_num = int(np.floor(np.log(img_shape[1])/np.log(2)))
+    conv_num = int(np.floor(np.log(disc_img_shape[1])/np.log(2)))
     list_filters = [filters_num*min(8, (2**i)) for i in range(conv_num)]
 
     # First Conv
-    x_input = Input(shape=img_shape, name='discriminator_input')
-    x = Conv2D(list_filters[0], (3,3), strides=(2,2), name='disc_conv2d_1', padding='same')(x_input)
-    x = BatchNormalization(axis=axis_num)(x)
-    x = LeakyReLU(0.2)(x)
+    generated_patch_input = Input(shape=disc_img_shape, name='discriminator_input')
+    xg = Conv2D(list_filters[0], (3,3), strides=(2,2), name='disc_conv2d_1', padding='same')(generated_patch_input)
+    xg = BatchNormalization(axis=axis_num)(xg)
+    xg = LeakyReLU(0.2)(xg)
 
+    # First Raw Conv
+    raw_patch_input = Input(shape=disc_raw_img_shape, name='discriminator_raw_input')
+    xr = Conv2D(list_filters[0], (3,3), strides=(2,2), name='raw_disc_conv2d_1', padding='same')(raw_patch_input)
+    xr = BatchNormalization(axis=axis_num)(xr)
+    xr = LeakyReLU(0.2)(xr)
 
     # Next Conv
     for i, f in enumerate(list_filters[1:]):
         name = 'disc_conv2d_' + str(i+2)
+        x = Concatenate(axis=axis_num)([xg, xr])
         x = Conv2D(f, (3,3), strides=(2,2), name=name, padding='same')(x)
         x = BatchNormalization(axis=axis_num)(x)
         x = LeakyReLU(0.2)(x)
@@ -97,11 +105,11 @@ def DCGAN_discriminator(img_shape, patch_num, model_name='DCGAN_discriminator'):
     x_flat = Flatten()(x)
     x = Dense(2, activation='softmax', name='disc_dense')(x_flat)
 
-    PatchGAN = Model(inputs=[x_input], outputs=[x], name='PatchGAN')
+    PatchGAN = Model(inputs=[generated_patch_input, raw_patch_input], outputs=[x], name='PatchGAN')
     print('PatchGan summary')
     PatchGAN.summary()
 
-    x = [PatchGAN(patch) for patch in list_input]
+    x = [PatchGAN([list_input[i], list_raw_input[i]]) for i in range(patch_num)]
 
     if len(x)>1:
         x = Concatenate(axis=axis_num)(x)
@@ -110,14 +118,14 @@ def DCGAN_discriminator(img_shape, patch_num, model_name='DCGAN_discriminator'):
 
     x_out = Dense(2, activation='softmax', name='disc_output')(x)
 
-    discriminator_model = Model(inputs=list_input, outputs=[x_out], name=model_name)
+    discriminator_model = Model(inputs=(list_input+list_raw_input), outputs=[x_out], name=model_name)
 
     return discriminator_model
 
 
 def DCGAN(generator, discriminator, img_shape, patch_size):
-    gen_input = Input(shape=img_shape, name='DCGAN_input')
-    genarated_image = generator(gen_input)
+    raw_input = Input(shape=img_shape, name='DCGAN_input')
+    genarated_image = generator(raw_input)
 
     h, w = img_shape[:-1]
     ph, pw = patch_size, patch_size
@@ -126,14 +134,17 @@ def DCGAN(generator, discriminator, img_shape, patch_size):
     list_col_idx = [(i*pw, (i+1)*pw) for i in range(w//pw)]
 
     list_gen_patch = []
+    list_raw_patch = []
     for row_idx in list_row_idx:
         for col_idx in list_col_idx:
+            raw_patch = Lambda(lambda z: z[:, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1], :])(raw_input)
+            list_raw_patch.append(raw_patch)
             x_patch = Lambda(lambda z: z[:, row_idx[0]:row_idx[1], col_idx[0]:col_idx[1], :])(genarated_image)
             list_gen_patch.append(x_patch)
 
-    DCGAN_output = discriminator(list_gen_patch)
+    DCGAN_output = discriminator(list_gen_patch+list_raw_patch)
 
-    DCGAN = Model(inputs=[gen_input],
+    DCGAN = Model(inputs=[raw_input],
                   outputs=[genarated_image, DCGAN_output],
                   name='DCGAN')
 
@@ -141,13 +152,13 @@ def DCGAN(generator, discriminator, img_shape, patch_size):
 
 
 
-def my_load_generator(img_shape, img_shape_disc):
-    model = generator_unet_upsampling(img_shape, img_shape_disc)
+def my_load_generator(img_shape, disc_img_shape):
+    model = generator_unet_upsampling(img_shape, disc_img_shape)
     model.summary()
     return model
 
-def my_load_DCGAN_discriminator(img_shape_disc, patch_num):
-    model = DCGAN_discriminator(img_shape_disc, patch_num)
+def my_load_DCGAN_discriminator(img_shape, disc_img_shape, patch_num):
+    model = DCGAN_discriminator(img_shape, disc_img_shape, patch_num)
     model.summary()
     return model
 
