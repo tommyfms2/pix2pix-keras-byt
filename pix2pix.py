@@ -44,7 +44,6 @@ def plot_generated_batch(X_proc, X_raw, generator_model, batch_size, suffix):
     XX = np.concatenate((Xs,Xg,Xr), axis=0)
 
     plt.imshow(XX)
-
     plt.axis('off')
     plt.savefig("./figures/current_batch_"+suffix+".png")
     plt.clf()
@@ -137,7 +136,6 @@ def my_train(args):
         perm = np.random.permutation(rawImage.shape[0])
         X_procImage = procImage[perm]
         X_rawImage  = rawImage[perm]
-        # ab = [a[i:i+batch_size] for i in range(0, a.shape[0], batch_size)]
         X_procImageIter = [X_procImage[i:i+args.batch_size] for i in range(0, rawImage.shape[0], args.batch_size)]
         X_rawImageIter  = [X_rawImage[i:i+args.batch_size] for i in range(0, rawImage.shape[0], args.batch_size)]
         b_it = 0
@@ -171,7 +169,6 @@ def my_train(args):
             # save images for visualization
             if b_it % (procImage.shape[0]//args.batch_size//2) == 0:
                 plot_generated_batch(X_proc_batch, X_raw_batch, generator_model, args.batch_size, "training")
-                # realy must use validation data
                 idx = np.random.choice(procImage_val.shape[0], args.batch_size)
                 X_gen_target, X_gen = procImage_val[idx], rawImage_val[idx]
                 plot_generated_batch(X_gen_target, X_gen, generator_model, args.batch_size, "validation")
@@ -192,7 +189,6 @@ def main():
     args = parser.parse_args()
 
     K.set_image_data_format("channels_last")
-
 
     my_train(args)
 
