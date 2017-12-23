@@ -92,7 +92,7 @@ def my_train(args):
         os.mkdir(findername)
 
     # load data
-    procImage, rawImage, procImage_val, rawImage_val = my_tmp_load_data(args.datasetpath)
+    procImage, rawImage, procImage_val, rawImage_val = my_load_data(args.datasetpath)
     print('procImage.shape : ', procImage.shape)
     print('rawImage.shape : ', rawImage.shape)
     print('procImage_val : ', procImage_val.shape)
