@@ -6,7 +6,9 @@ import numpy as np
 
 import h5py
 import time
-import tqdm
+
+import matplotlib as mpl
+mpl.use('Agg')
 import matplotlib.pylab as plt
 
 import keras.backend as K
@@ -90,6 +92,8 @@ def my_train(args):
     # create output finder
     if not os.path.exists(os.path.expanduser(args.datasetpath)):
         os.mkdir(findername)
+    if not os.path.exists('./figures'):
+        os.mkdir('./figures')
 
     # load data
     procImage, rawImage, procImage_val, rawImage_val = my_load_data(args.datasetpath)
