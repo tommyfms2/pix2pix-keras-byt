@@ -92,6 +92,7 @@ def my_train(args):
     # create output finder
     if not os.path.exists(os.path.expanduser(args.datasetpath)):
         os.mkdir(findername)
+    # create figures
     if not os.path.exists('./figures'):
         os.mkdir('./figures')
 
