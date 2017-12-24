@@ -165,3 +165,4 @@ def my_load_DCGAN_discriminator(img_shape, disc_img_shape, patch_num):
 def my_load_DCGAN(generator, discriminator, img_shape, patch_size):
     model = DCGAN(generator, discriminator, img_shape, patch_size)
     return model
+
