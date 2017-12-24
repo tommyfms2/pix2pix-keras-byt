@@ -54,13 +54,13 @@ def plot_generated_batch(X_proc, X_raw, generator_model, batch_size, suffix):
 # tmp load data gray to color
 def my_load_data(datasetpath):
     with h5py.File(datasetpath, "r") as hf:
-        X_full_train = hf["train_data_full"][:].astype(np.float32)
+        X_full_train = hf["train_data_gen"][:].astype(np.float32)
         X_full_train = my_normalization(X_full_train)
-        X_sketch_train = hf["train_data_gray"][:].astype(np.float32)
+        X_sketch_train = hf["train_data_raw"][:].astype(np.float32)
         X_sketch_train = my_normalization(X_sketch_train)
-        X_full_val = hf["val_data_full"][:].astype(np.float32)
+        X_full_val = hf["val_data_gen"][:].astype(np.float32)
         X_full_val = my_normalization(X_full_val)
-        X_sketch_val = hf["val_data_gray"][:].astype(np.float32)
+        X_sketch_val = hf["val_data_raw"][:].astype(np.float32)
         X_sketch_val = my_normalization(X_sketch_val)
         return X_full_train, X_sketch_train, X_full_val, X_sketch_val
 
@@ -157,10 +157,10 @@ def my_train(args):
             y_gen[:, 1] = 1
 
             # Freeze the discriminator
-            # discriminator_model.trainable = False
+            discriminator_model.trainable = False
             gen_loss = DCGAN_model.train_on_batch(X_gen, [X_gen_target, y_gen])
             # Unfreeze the discriminator
-            # discriminator_model.trainable = True
+            discriminator_model.trainable = True
 
             progbar.add(args.batch_size, values=[
                 ("D logloss", disc_loss),
