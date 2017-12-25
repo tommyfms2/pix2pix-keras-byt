@@ -11,7 +11,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--inpath', '-i', required=True)
     parser.add_argument('--outpath', '-o', required=True)
-    parser.add_argument('--towhat', '-t', default='gray')
+    parser.add_argument('--trans', '-t', default='gray')
     args = parser.parse_args()
 
     finders = glob.glob(args.inpath+'/*')
@@ -24,11 +24,11 @@ def main():
             img = load_img(imgfile)
             imgarray = img_to_array(img)
             imgs.append(imgarray)
-            if args.towhat=='gray':
+            if args.trans=='gray':
                 grayimg = load_img(imgfile, grayscale=True)
                 grayimgarray = img_to_array(grayimg)
                 gimgs.append(grayimgarray)
-            elif args.towhat=='canny':
+            elif args.trans=='canny':
                 grayimg = cv2.cvtColor(cv2.imread(imgfile), cv2.COLOR_BGR2GRAY)
                 gray_canny_xy = cv2.Canny(grayimg, 128,128 )
                 gray_canny_xy = cv2.bitwise_not(gray_canny_xy)
