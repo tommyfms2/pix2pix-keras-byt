@@ -34,7 +34,6 @@ then, you will have datasetimages.hdf5.
   --patch_size PATCH_SIZE, -p PATCH_SIZE  
   --batch_size BATCH_SIZE, -b BATCH_SIZE  
   --epoch EPOCH, -e EPOCH  
-  --in_size IN_SIZE, -is IN_SIZE  
   
 ### generated image.  
 'figures' folder will be created in the same directory and generated image would be there.  
